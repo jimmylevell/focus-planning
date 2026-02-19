@@ -28,6 +28,7 @@ export default function WorkItemsPage() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [hasValidSyncParams, setHasValidSyncParams] = useState(false);
   const [syncParams, setSyncParams] = useState({
     project: '',
     workItemType: 'Ergebnis',
@@ -94,7 +95,41 @@ export default function WorkItemsPage() {
       if (data.success) {
         setWorkItems(data.data);
         setShowSyncModal(false);
+        setHasValidSyncParams(true); // Mark that we have valid params for refresh
         // Don't reset form - keep previous values for next sync
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError('Failed to sync work items from Azure DevOps');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleRefreshSync = async () => {
+    if (!hasValidSyncParams || !syncParams.project) return;
+    
+    setSyncing(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/work-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project: syncParams.project,
+          workItemType: syncParams.workItemType || undefined,
+          iterationPath: syncParams.iterationPath || undefined,
+          areaPath: syncParams.areaPath || undefined,
+          state: syncParams.state || undefined,
+          tags: syncParams.tags || undefined,
+          focusPeriodId: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : undefined,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setWorkItems(data.data);
       } else {
         setError(data.error);
       }
@@ -122,15 +157,29 @@ export default function WorkItemsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Work Items</h1>
-        <button
-          onClick={() => setShowSyncModal(true)}
-          className="btn-primary"
-        >
-          <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Sync from Azure DevOps
-        </button>
+        <div className="flex space-x-2">
+          {hasValidSyncParams && (
+            <button
+              onClick={handleRefreshSync}
+              className="btn-secondary"
+              disabled={syncing}
+            >
+              <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {syncing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          )}
+          <button
+            onClick={() => setShowSyncModal(true)}
+            className="btn-primary"
+          >
+            <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Sync from Azure DevOps
+          </button>
+        </div>
       </div>
 
       {error && (

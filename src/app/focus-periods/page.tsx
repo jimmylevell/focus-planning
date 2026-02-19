@@ -20,6 +20,7 @@ export default function FocusPeriodsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingPeriod, setEditingPeriod] = useState<FocusPeriod | null>(null);
   const [newPeriod, setNewPeriod] = useState({
     name: '',
     start_date: '',
@@ -77,6 +78,63 @@ export default function FocusPeriodsPage() {
     }
   };
 
+  const handleEditPeriod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPeriod) return;
+
+    try {
+      const response = await fetch(`/api/focus-periods/${editingPeriod.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPeriod),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPeriods(periods.map(p => p.id === editingPeriod.id ? data.data : p));
+        setShowModal(false);
+        setEditingPeriod(null);
+        setNewPeriod({
+          name: '',
+          start_date: '',
+          end_date: '',
+          capacity_model: 80,
+          azdo_iteration_path: '',
+          azdo_tag: '',
+        });
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError('Failed to update focus period');
+    }
+  };
+
+  const openEditModal = (period: FocusPeriod) => {
+    setEditingPeriod(period);
+    setNewPeriod({
+      name: period.name,
+      start_date: period.start_date.split('T')[0], // Format for date input
+      end_date: period.end_date.split('T')[0],
+      capacity_model: period.capacity_model,
+      azdo_iteration_path: period.azdo_iteration_path || '',
+      azdo_tag: period.azdo_tag || '',
+    });
+    setShowModal(true);
+  };
+
+  const openCreateModal = () => {
+    setEditingPeriod(null);
+    setNewPeriod({
+      name: '',
+      start_date: '',
+      end_date: '',
+      capacity_model: 80,
+      azdo_iteration_path: '',
+      azdo_tag: '',
+    });
+    setShowModal(true);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -94,7 +152,7 @@ export default function FocusPeriodsPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Focus Periods</h1>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openCreateModal}
           className="btn-primary"
         >
           <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,11 +173,22 @@ export default function FocusPeriodsPage() {
           <div key={period.id} className="card">
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-xl font-semibold text-gray-900">{period.name}</h3>
-              {period.is_active && (
-                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                  Active
-                </span>
-              )}
+              <div className="flex items-center space-x-2">
+                {period.is_active && (
+                  <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                    Active
+                  </span>
+                )}
+                <button
+                  onClick={() => openEditModal(period)}
+                  className="text-blue-600 hover:text-blue-800"
+                  title="Edit focus period"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div className="space-y-2 text-sm text-gray-600">
               <div className="flex items-center">
@@ -168,7 +237,7 @@ export default function FocusPeriodsPage() {
           <p className="mt-1 text-sm text-gray-500">Get started by creating a new focus period.</p>
           <div className="mt-6">
             <button
-              onClick={() => setShowModal(true)}
+              onClick={openCreateModal}
               className="btn-primary"
             >
               Add Focus Period
@@ -181,8 +250,10 @@ export default function FocusPeriodsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4 text-gray-900">Create New Focus Period</h2>
-            <form onSubmit={handleCreatePeriod}>
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">
+              {editingPeriod ? 'Edit Focus Period' : 'Create New Focus Period'}
+            </h2>
+            <form onSubmit={editingPeriod ? handleEditPeriod : handleCreatePeriod}>
               <div className="mb-4">
                 <label className="label">Period Name</label>
                 <input
@@ -255,7 +326,7 @@ export default function FocusPeriodsPage() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
-                  Create Period
+                  {editingPeriod ? 'Update Period' : 'Create Period'}
                 </button>
               </div>
             </form>
