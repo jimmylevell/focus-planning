@@ -42,6 +42,18 @@ export default function WorkItemsPage() {
   useEffect(() => {
     fetchWorkItems();
     fetchFocusPeriods();
+    
+    // Load sync params from localStorage on mount
+    const savedParams = localStorage.getItem('workItemsSyncParams');
+    if (savedParams) {
+      try {
+        const parsed = JSON.parse(savedParams);
+        setSyncParams(parsed);
+        setHasValidSyncParams(!!parsed.project); // Has valid params if project is set
+      } catch (err) {
+        console.error('Failed to parse saved sync params:', err);
+      }
+    }
   }, []);
 
   const fetchWorkItems = async () => {
@@ -96,6 +108,8 @@ export default function WorkItemsPage() {
         setWorkItems(data.data);
         setShowSyncModal(false);
         setHasValidSyncParams(true); // Mark that we have valid params for refresh
+        // Save sync params to localStorage for persistence across page refreshes
+        localStorage.setItem('workItemsSyncParams', JSON.stringify(syncParams));
         // Don't reset form - keep previous values for next sync
       } else {
         setError(data.error);
