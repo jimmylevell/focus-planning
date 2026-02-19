@@ -30,7 +30,9 @@ export default function TeamsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showEditMemberModal, setShowEditMemberModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [newTeam, setNewTeam] = useState({ name: '', description: '' });
@@ -175,6 +177,40 @@ export default function TeamsPage() {
       }
     } catch (err) {
       setError('Failed to create team member');
+    }
+  };
+
+  const handleEditMember = (member: TeamMember) => {
+    setSelectedMember(member);
+    setShowEditMemberModal(true);
+  };
+
+  const handleUpdateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMember || !selectedTeam) return;
+
+    try {
+      const response = await fetch(`/api/members/${selectedMember.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: selectedMember.name,
+          email: selectedMember.email || undefined,
+          role: selectedMember.role || undefined,
+          default_capacity_days: selectedMember.default_capacity_days,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Refresh the members list
+        await fetchTeamMembers(selectedTeam.id);
+        setShowEditMemberModal(false);
+        setSelectedMember(null);
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError('Failed to update team member');
     }
   };
 
@@ -375,7 +411,7 @@ export default function TeamsPage() {
                 {teamMembers.map((member) => (
                   <div key={member.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-semibold text-gray-900">{member.name}</h3>
                         {member.email && (
                           <p className="text-sm text-gray-500">{member.email}</p>
@@ -386,12 +422,20 @@ export default function TeamsPage() {
                           </span>
                         )}
                       </div>
-                      {member.default_capacity_days && (
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Capacity</p>
-                          <p className="font-semibold">{member.default_capacity_days} days</p>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-4">
+                        {member.default_capacity_days && (
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">Capacity</p>
+                            <p className="font-semibold">{member.default_capacity_days} days</p>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleEditMember(member)}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -478,6 +522,72 @@ export default function TeamsPage() {
                 </button>
                 <button type="submit" className="btn-primary">
                   Add Member
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Member Modal */}
+      {showEditMemberModal && selectedMember && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Edit Team Member</h2>
+            <form onSubmit={handleUpdateMember}>
+              <div className="mb-4">
+                <label className="label">Name *</label>
+                <input
+                  type="text"
+                  value={selectedMember.name}
+                  onChange={(e) => setSelectedMember({ ...selectedMember, name: e.target.value })}
+                  className="input w-full"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  value={selectedMember.email || ''}
+                  onChange={(e) => setSelectedMember({ ...selectedMember, email: e.target.value })}
+                  className="input w-full"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Role</label>
+                <input
+                  type="text"
+                  value={selectedMember.role || ''}
+                  onChange={(e) => setSelectedMember({ ...selectedMember, role: e.target.value })}
+                  className="input w-full"
+                  placeholder="e.g., Developer, Designer"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Default Capacity (days)</label>
+                <input
+                  type="number"
+                  value={selectedMember.default_capacity_days || 20}
+                  onChange={(e) => setSelectedMember({ ...selectedMember, default_capacity_days: parseInt(e.target.value) })}
+                  className="input w-full"
+                  min="0"
+                  max="31"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditMemberModal(false);
+                    setSelectedMember(null);
+                  }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Update Member
                 </button>
               </div>
             </form>
