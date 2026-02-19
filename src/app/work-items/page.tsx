@@ -94,16 +94,7 @@ export default function WorkItemsPage() {
       if (data.success) {
         setWorkItems(data.data);
         setShowSyncModal(false);
-        // Reset form
-        setSyncParams({
-          project: '',
-          workItemType: 'Ergebnis',
-          iterationPath: '',
-          areaPath: '',
-          state: '',
-          tags: '',
-          focusPeriodId: '',
-        });
+        // Don't reset form - keep previous values for next sync
       } else {
         setError(data.error);
       }
@@ -233,7 +224,7 @@ export default function WorkItemsPage() {
       {showSyncModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Sync Work Items from Azure DevOps</h2>
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Sync Work Items from Azure DevOps</h2>
             <form onSubmit={handleSync}>
               <div className="mb-4">
                 <label className="label">Project Name *</label>

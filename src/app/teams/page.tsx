@@ -29,10 +29,17 @@ export default function TeamsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [newTeam, setNewTeam] = useState({ name: '', description: '' });
+  const [newMember, setNewMember] = useState({
+    name: '',
+    email: '',
+    role: '',
+    default_capacity_days: 20,
+  });
 
   useEffect(() => {
     fetchTeams();
@@ -129,6 +136,48 @@ export default function TeamsPage() {
     setShowEditModal(true);
   };
 
+  const handleAddMember = (team: Team) => {
+    setSelectedTeam(team);
+    setShowAddMemberModal(true);
+  };
+
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeam) return;
+
+    try {
+      const response = await fetch('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_id: selectedTeam.id,
+          name: newMember.name,
+          email: newMember.email || undefined,
+          role: newMember.role || undefined,
+          default_capacity_days: newMember.default_capacity_days,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Refresh the members list if members modal is open
+        if (showMembersModal) {
+          await fetchTeamMembers(selectedTeam.id);
+        }
+        setShowAddMemberModal(false);
+        setNewMember({
+          name: '',
+          email: '',
+          role: '',
+          default_capacity_days: 20,
+        });
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError('Failed to create team member');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -215,7 +264,7 @@ export default function TeamsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Create New Team</h2>
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Create New Team</h2>
             <form onSubmit={handleCreateTeam}>
               <div className="mb-4">
                 <label className="label">Team Name</label>
@@ -257,7 +306,7 @@ export default function TeamsPage() {
       {showEditModal && selectedTeam && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Edit Team</h2>
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Edit Team</h2>
             <form onSubmit={handleUpdateTeam}>
               <div className="mb-4">
                 <label className="label">Team Name</label>
@@ -302,7 +351,15 @@ export default function TeamsPage() {
       {showMembersModal && selectedTeam && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Team Members - {selectedTeam.name}</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Team Members - {selectedTeam.name}</h2>
+              <button
+                onClick={() => handleAddMember(selectedTeam)}
+                className="btn-primary text-sm"
+              >
+                + Add Member
+              </button>
+            </div>
             
             {loadingMembers ? (
               <div className="text-center py-8">
@@ -353,6 +410,77 @@ export default function TeamsPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Member Modal */}
+      {showAddMemberModal && selectedTeam && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Add Team Member to {selectedTeam.name}</h2>
+            <form onSubmit={handleCreateMember}>
+              <div className="mb-4">
+                <label className="label">Name *</label>
+                <input
+                  type="text"
+                  value={newMember.name}
+                  onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                  className="input w-full"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                  className="input w-full"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Role</label>
+                <input
+                  type="text"
+                  value={newMember.role}
+                  onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+                  className="input w-full"
+                  placeholder="e.g., Developer, Designer"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Default Capacity (days)</label>
+                <input
+                  type="number"
+                  value={newMember.default_capacity_days}
+                  onChange={(e) => setNewMember({ ...newMember, default_capacity_days: parseInt(e.target.value) })}
+                  className="input w-full"
+                  min="0"
+                  max="31"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddMemberModal(false);
+                    setNewMember({
+                      name: '',
+                      email: '',
+                      role: '',
+                      default_capacity_days: 20,
+                    });
+                  }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Add Member
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
