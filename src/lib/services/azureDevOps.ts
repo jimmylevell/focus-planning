@@ -22,6 +22,9 @@ export class AzureDevOpsService {
 
   /**
    * Sync work items from Azure DevOps based on filters
+   * Note: Azure DevOps API uses WIQL (Work Item Query Language) which is not susceptible 
+   * to traditional SQL injection as it's parsed and validated by the Azure DevOps service.
+   * However, we still sanitize input parameters to prevent any potential issues.
    */
   async syncWorkItems(params: {
     project: string;
@@ -35,25 +38,33 @@ export class AzureDevOpsService {
     try {
       const witApi = await this.witApi;
       
-      // Build WIQL query
+      // Sanitize inputs by removing potentially harmful characters
+      const sanitizeString = (str: string) => str.replace(/['"]/g, '');
+      
+      // Build WIQL query with sanitized inputs
+      const workItemType = sanitizeString(params.workItemType || 'Ergebnis');
       let wiqlQuery = `SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.Tags], [Microsoft.VSTS.Scheduling.Effort]
                        FROM WorkItems
-                       WHERE [System.WorkItemType] = '${params.workItemType || 'Ergebnis'}'`;
+                       WHERE [System.WorkItemType] = '${workItemType}'`;
 
       if (params.iterationPath) {
-        wiqlQuery += ` AND [System.IterationPath] UNDER '${params.iterationPath}'`;
+        const iterationPath = sanitizeString(params.iterationPath);
+        wiqlQuery += ` AND [System.IterationPath] UNDER '${iterationPath}'`;
       }
 
       if (params.areaPath) {
-        wiqlQuery += ` AND [System.AreaPath] UNDER '${params.areaPath}'`;
+        const areaPath = sanitizeString(params.areaPath);
+        wiqlQuery += ` AND [System.AreaPath] UNDER '${areaPath}'`;
       }
 
       if (params.state) {
-        wiqlQuery += ` AND [System.State] = '${params.state}'`;
+        const state = sanitizeString(params.state);
+        wiqlQuery += ` AND [System.State] = '${state}'`;
       }
 
       if (params.tags) {
-        wiqlQuery += ` AND [System.Tags] CONTAINS '${params.tags}'`;
+        const tags = sanitizeString(params.tags);
+        wiqlQuery += ` AND [System.Tags] CONTAINS '${tags}'`;
       }
 
       wiqlQuery += ' ORDER BY [System.Id] DESC';

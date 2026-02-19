@@ -118,11 +118,24 @@ END
 GO
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON TeamMembers(team_id);
-CREATE INDEX IF NOT EXISTS idx_work_items_focus_period ON WorkItems(focus_period_id);
-CREATE INDEX IF NOT EXISTS idx_work_items_azdo_id ON WorkItems(azdo_id);
-CREATE INDEX IF NOT EXISTS idx_capacity_allocations_member ON CapacityAllocations(team_member_id);
-CREATE INDEX IF NOT EXISTS idx_capacity_allocations_work_item ON CapacityAllocations(work_item_id);
-CREATE INDEX IF NOT EXISTS idx_capacity_allocations_focus ON CapacityAllocations(focus_period_id);
-CREATE INDEX IF NOT EXISTS idx_member_availability_member ON MemberAvailability(team_member_id);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_team_members_team_id' AND object_id = OBJECT_ID('TeamMembers'))
+    CREATE INDEX idx_team_members_team_id ON TeamMembers(team_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_work_items_focus_period' AND object_id = OBJECT_ID('WorkItems'))
+    CREATE INDEX idx_work_items_focus_period ON WorkItems(focus_period_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_work_items_azdo_id' AND object_id = OBJECT_ID('WorkItems'))
+    CREATE INDEX idx_work_items_azdo_id ON WorkItems(azdo_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_capacity_allocations_member' AND object_id = OBJECT_ID('CapacityAllocations'))
+    CREATE INDEX idx_capacity_allocations_member ON CapacityAllocations(team_member_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_capacity_allocations_work_item' AND object_id = OBJECT_ID('CapacityAllocations'))
+    CREATE INDEX idx_capacity_allocations_work_item ON CapacityAllocations(work_item_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_capacity_allocations_focus' AND object_id = OBJECT_ID('CapacityAllocations'))
+    CREATE INDEX idx_capacity_allocations_focus ON CapacityAllocations(focus_period_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_member_availability_member' AND object_id = OBJECT_ID('MemberAvailability'))
+    CREATE INDEX idx_member_availability_member ON MemberAvailability(team_member_id);
 GO

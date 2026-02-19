@@ -45,7 +45,7 @@ A Next.js web application for managing team capacity planning with Azure DevOps 
 
 ## Technology Stack
 
-- **Frontend**: Next.js 14 with TypeScript and React
+- **Frontend**: Next.js 16 with TypeScript and React
 - **Styling**: Tailwind CSS for responsive UI
 - **Database**: Microsoft SQL Server (MSSQL)
 - **Integration**: Azure DevOps REST API
