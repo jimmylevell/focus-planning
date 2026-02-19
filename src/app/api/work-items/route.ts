@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+import { WorkItem } from '@/types';
+
+// GET /api/work-items - List all work items
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const focusPeriodId = searchParams.get('focus_period_id');
+    
+    let queryString = 'SELECT * FROM WorkItems';
+    const params: Record<string, any> = {};
+    
+    if (focusPeriodId) {
+      queryString += ' WHERE focus_period_id = @focus_period_id';
+      params.focus_period_id = focusPeriodId;
+    }
+    
+    queryString += ' ORDER BY azdo_id DESC';
+    
+    const workItems = await query<WorkItem>(queryString, Object.keys(params).length > 0 ? params : undefined);
+    return NextResponse.json({ success: true, data: workItems });
+  } catch (error) {
+    console.error('Error fetching work items:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch work items' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/work-items - Sync work items from Azure DevOps
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    if (!body.project) {
+      return NextResponse.json(
+        { success: false, error: 'Project is required' },
+        { status: 400 }
+      );
+    }
+
+    // Import the Azure DevOps service dynamically to avoid issues
+    const { getAzureDevOpsService } = await import('@/lib/services/azureDevOps');
+    const azDoService = getAzureDevOpsService();
+    
+    const syncedItems = await azDoService.syncWorkItems({
+      project: body.project,
+      workItemType: body.workItemType,
+      iterationPath: body.iterationPath,
+      areaPath: body.areaPath,
+      state: body.state,
+      tags: body.tags,
+      focusPeriodId: body.focusPeriodId,
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      data: syncedItems,
+      message: `Synced ${syncedItems.length} work items` 
+    }, { status: 201 });
+  } catch (error) {
+    console.error('Error syncing work items:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to sync work items' },
+      { status: 500 }
+    );
+  }
+}
