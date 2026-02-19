@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Team {
   id: number;
@@ -11,11 +12,26 @@ interface Team {
   updated_at: string;
 }
 
+interface TeamMember {
+  id: number;
+  team_id: number;
+  name: string;
+  email?: string;
+  role?: string;
+  default_capacity_days?: number;
+}
+
 export default function TeamsPage() {
+  const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   const [newTeam, setNewTeam] = useState({ name: '', description: '' });
 
   useEffect(() => {
@@ -38,6 +54,23 @@ export default function TeamsPage() {
     }
   };
 
+  const fetchTeamMembers = async (teamId: number) => {
+    setLoadingMembers(true);
+    try {
+      const response = await fetch(`/api/members?team_id=${teamId}`);
+      const data = await response.json();
+      if (data.success) {
+        setTeamMembers(data.data);
+      } else {
+        setError('Failed to fetch team members');
+      }
+    } catch (err) {
+      setError('Failed to fetch team members');
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -57,6 +90,43 @@ export default function TeamsPage() {
     } catch (err) {
       setError('Failed to create team');
     }
+  };
+
+  const handleUpdateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeam) return;
+
+    try {
+      const response = await fetch(`/api/teams/${selectedTeam.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: selectedTeam.name,
+          description: selectedTeam.description,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTeams(teams.map(t => t.id === selectedTeam.id ? data.data : t));
+        setShowEditModal(false);
+        setSelectedTeam(null);
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError('Failed to update team');
+    }
+  };
+
+  const handleViewMembers = async (team: Team) => {
+    setSelectedTeam(team);
+    setShowMembersModal(true);
+    await fetchTeamMembers(team.id);
+  };
+
+  const handleEditTeam = (team: Team) => {
+    setSelectedTeam(team);
+    setShowEditModal(true);
   };
 
   if (loading) {
@@ -96,10 +166,16 @@ export default function TeamsPage() {
               <p className="text-gray-600 mb-4">{team.description}</p>
             )}
             <div className="flex space-x-2">
-              <button className="text-blue-600 hover:text-blue-800">
+              <button 
+                onClick={() => handleViewMembers(team)}
+                className="text-blue-600 hover:text-blue-800"
+              >
                 View Members
               </button>
-              <button className="text-gray-600 hover:text-gray-800">
+              <button 
+                onClick={() => handleEditTeam(team)}
+                className="text-gray-600 hover:text-gray-800"
+              >
                 Edit
               </button>
             </div>
@@ -135,7 +211,7 @@ export default function TeamsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Create Team Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
@@ -173,6 +249,110 @@ export default function TeamsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Team Modal */}
+      {showEditModal && selectedTeam && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4">Edit Team</h2>
+            <form onSubmit={handleUpdateTeam}>
+              <div className="mb-4">
+                <label className="label">Team Name</label>
+                <input
+                  type="text"
+                  value={selectedTeam.name}
+                  onChange={(e) => setSelectedTeam({ ...selectedTeam, name: e.target.value })}
+                  className="input w-full"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="label">Description</label>
+                <textarea
+                  value={selectedTeam.description || ''}
+                  onChange={(e) => setSelectedTeam({ ...selectedTeam, description: e.target.value })}
+                  className="input w-full"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedTeam(null);
+                  }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Update Team
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Members Modal */}
+      {showMembersModal && selectedTeam && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">Team Members - {selectedTeam.name}</h2>
+            
+            {loadingMembers ? (
+              <div className="text-center py-8">
+                <div className="text-gray-600">Loading members...</div>
+              </div>
+            ) : teamMembers.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No members found for this team.</p>
+                <p className="text-sm text-gray-400 mt-2">Add members to this team to see them here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {teamMembers.map((member) => (
+                  <div key={member.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{member.name}</h3>
+                        {member.email && (
+                          <p className="text-sm text-gray-500">{member.email}</p>
+                        )}
+                        {member.role && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mt-1 inline-block">
+                            {member.role}
+                          </span>
+                        )}
+                      </div>
+                      {member.default_capacity_days && (
+                        <div className="text-right">
+                          <p className="text-sm text-gray-500">Capacity</p>
+                          <p className="font-semibold">{member.default_capacity_days} days</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => {
+                  setShowMembersModal(false);
+                  setSelectedTeam(null);
+                  setTeamMembers([]);
+                }}
+                className="btn-secondary"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
