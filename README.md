@@ -238,35 +238,7 @@ The project uses:
 
 Ensure your production database is created and the schema is applied before deploying the application.
 
-## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Maintainability
-
-This project emphasizes maintainability through:
-
-- **Clear Separation of Concerns**: API routes, components, and business logic are well-organized
-- **Type Safety**: TypeScript throughout the codebase
-- **Consistent Code Style**: ESLint and Prettier configurations
-- **Database Abstraction**: Centralized database connection management
-- **Environment Configuration**: All configuration via environment variables
-- **Documentation**: Comprehensive inline comments and README
-
-## License
-
-This project is licensed under the ISC License.
-
-## Support
-
-For issues, questions, or contributions, please open an issue in the GitHub repository.
-
-## Acknowledgments
-
-- Next.js team for the excellent framework
-- Microsoft for Azure DevOps API and MSSQL
-- Tailwind CSS for the utility-first CSS framework
+`
+docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=YourPassword123!" -e "MSSQL_PID=Evaluation" -p 1433:1433  --name sql2025 --hostname sql2025 -d mcr.microsoft.com/mssql/server:2025-latest
+`
