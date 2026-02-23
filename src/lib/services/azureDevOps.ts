@@ -108,6 +108,11 @@ export class AzureDevOpsService {
         // Upsert work item
         const result = await this.upsertWorkItem(workItemData);
         syncedItems.push(result);
+
+        // Auto-create capacity allocation if work item has owner and effort
+        if (result.owner && result.effort && params.focusPeriodId) {
+          await this.syncCapacityAllocation(result, params.focusPeriodId);
+        }
       }
 
       return syncedItems;
@@ -174,6 +179,85 @@ export class AzureDevOpsService {
     } catch (error) {
       console.error('Error upserting work item:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Sync capacity allocation for a work item
+   * Matches Azure DevOps owner to team member and creates/updates allocation
+   */
+  private async syncCapacityAllocation(workItem: WorkItem, focusPeriodId: number): Promise<void> {
+    try {
+      // Try to find matching team member by name or email
+      const teamMembers = await query<{ id: number; name: string; email: string }>(
+        'SELECT id, name, email FROM TeamMembers WHERE is_active = 1'
+      );
+
+      const owner = workItem.owner!;
+      let matchedMemberId: number | null = null;
+
+      // Try exact name match first
+      const exactMatch = teamMembers.find(m => m.name.toLowerCase() === owner.toLowerCase());
+      if (exactMatch) {
+        matchedMemberId = exactMatch.id;
+      } else {
+        // Try partial name match (e.g., "John Doe" matches "Doe, John")
+        const nameParts = owner.toLowerCase().split(/[\s,]+/).filter(p => p.length > 0);
+        const partialMatch = teamMembers.find(m => {
+          const memberNameLower = m.name.toLowerCase();
+          return nameParts.every(part => memberNameLower.includes(part));
+        });
+        if (partialMatch) {
+          matchedMemberId = partialMatch.id;
+        }
+      }
+
+      if (!matchedMemberId) {
+        console.warn(`Could not match Azure DevOps owner "${owner}" to any team member for work item ${workItem.azdo_id}`);
+        return;
+      }
+
+      // Check if allocation already exists
+      const existingAllocation = await query(
+        `SELECT id, allocated_days FROM CapacityAllocations 
+         WHERE work_item_id = @work_item_id AND team_member_id = @team_member_id AND focus_period_id = @focus_period_id`,
+        {
+          work_item_id: workItem.id,
+          team_member_id: matchedMemberId,
+          focus_period_id: focusPeriodId,
+        }
+      );
+
+      const allocatedDays = workItem.effort || 0;
+
+      if (existingAllocation.length > 0) {
+        // Update existing allocation
+        await query(
+          `UPDATE CapacityAllocations
+           SET allocated_days = @allocated_days,
+               updated_at = GETDATE()
+           WHERE id = @id`,
+          {
+            id: existingAllocation[0].id,
+            allocated_days: allocatedDays,
+          }
+        );
+      } else {
+        // Create new allocation
+        await query(
+          `INSERT INTO CapacityAllocations (team_member_id, work_item_id, focus_period_id, allocated_days)
+           VALUES (@team_member_id, @work_item_id, @focus_period_id, @allocated_days)`,
+          {
+            team_member_id: matchedMemberId,
+            work_item_id: workItem.id,
+            focus_period_id: focusPeriodId,
+            allocated_days: allocatedDays,
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error syncing capacity allocation:', error);
+      // Don't throw - we don't want to fail the entire sync if one allocation fails
     }
   }
 

@@ -17,6 +17,9 @@ interface CapacityAllocation {
   allocated_days: number;
   allocated_percentage?: number;
   work_item_title?: string;
+  work_item_state?: string;
+  work_item_azdo_id?: number;
+  work_item_effort?: number;
   member_name?: string;
 }
 
@@ -190,12 +193,52 @@ export default function CapacityPage() {
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                   <div
                     className={`h-2 rounded-full transition-all ${getUtilizationBarColor(capacity.utilization)}`}
                     style={{ width: `${Math.min(capacity.utilization, 100)}%` }}
                   ></div>
                 </div>
+
+                {/* Work Items List */}
+                {allocations.filter(a => a.team_member_id === capacity.member.id).length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Assigned Work Items</h4>
+                    <div className="space-y-2">
+                      {allocations
+                        .filter(a => a.team_member_id === capacity.member.id)
+                        .map((allocation) => (
+                          <div key={allocation.id} className="flex items-start justify-between text-sm bg-gray-50 p-2 rounded">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {allocation.work_item_azdo_id && (
+                                  <span className="text-xs text-gray-500">#{allocation.work_item_azdo_id}</span>
+                                )}
+                                <span className="font-medium text-gray-900">
+                                  {allocation.work_item_title || 'Untitled Work Item'}
+                                </span>
+                              </div>
+                              {allocation.work_item_state && (
+                                <span className="text-xs text-gray-500">
+                                  Status: {allocation.work_item_state}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className="font-semibold text-gray-900">
+                                {allocation.allocated_days.toFixed(1)} days
+                              </div>
+                              {allocation.work_item_effort && allocation.work_item_effort !== allocation.allocated_days && (
+                                <div className="text-xs text-gray-500">
+                                  (effort: {allocation.work_item_effort})
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
