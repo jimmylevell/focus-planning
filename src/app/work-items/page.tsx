@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { DEFAULT_WORK_ITEM_TYPE } from '@/lib/constants/azureDevOps';
 
 interface WorkItem {
   id: number;
@@ -46,7 +47,7 @@ export default function WorkItemsPage() {
   const [syncParams, setSyncParams] = useState({
     name: '',
     project: '',
-    workItemType: 'Ergebnis',
+    workItemType: DEFAULT_WORK_ITEM_TYPE,
     iterationPath: '',
     areaPath: '',
     state: '',
@@ -220,7 +221,7 @@ export default function WorkItemsPage() {
     setSyncParams({
       name: config.name,
       project: config.project,
-      workItemType: config.work_item_type || 'Ergebnis',
+      workItemType: config.work_item_type || DEFAULT_WORK_ITEM_TYPE,
       iterationPath: config.iteration_path || '',
       areaPath: config.area_path || '',
       state: config.state || '',
@@ -235,7 +236,7 @@ export default function WorkItemsPage() {
     setSyncParams({
       name: '',
       project: '',
-      workItemType: 'Ergebnis',
+      workItemType: DEFAULT_WORK_ITEM_TYPE,
       iterationPath: '',
       areaPath: '',
       state: '',
@@ -484,7 +485,7 @@ export default function WorkItemsPage() {
                   value={syncParams.workItemType}
                   onChange={(e) => setSyncParams({ ...syncParams, workItemType: e.target.value })}
                   className="input w-full"
-                  placeholder="Ergebnis"
+                  placeholder={DEFAULT_WORK_ITEM_TYPE}
                   disabled={syncing}
                 />
               </div>

@@ -40,32 +40,62 @@ export async function PATCH(
     const { id } = await params;
     const body: UpdateAzDoSyncConfigurationInput = await request.json();
 
+    // Build dynamic SQL to only update provided fields
+    const updates: string[] = [];
+    const queryParams: Record<string, any> = { id: parseInt(id) };
+
+    if (body.name !== undefined) {
+      updates.push('name = @name');
+      queryParams.name = body.name;
+    }
+    if (body.project !== undefined) {
+      updates.push('project = @project');
+      queryParams.project = body.project;
+    }
+    if (body.work_item_type !== undefined) {
+      updates.push('work_item_type = @work_item_type');
+      queryParams.work_item_type = body.work_item_type;
+    }
+    if (body.iteration_path !== undefined) {
+      updates.push('iteration_path = @iteration_path');
+      queryParams.iteration_path = body.iteration_path || null;
+    }
+    if (body.area_path !== undefined) {
+      updates.push('area_path = @area_path');
+      queryParams.area_path = body.area_path || null;
+    }
+    if (body.state !== undefined) {
+      updates.push('state = @state');
+      queryParams.state = body.state || null;
+    }
+    if (body.tags !== undefined) {
+      updates.push('tags = @tags');
+      queryParams.tags = body.tags || null;
+    }
+    if (body.focus_period_id !== undefined) {
+      updates.push('focus_period_id = @focus_period_id');
+      queryParams.focus_period_id = body.focus_period_id || null;
+    }
+    if (body.is_active !== undefined) {
+      updates.push('is_active = @is_active');
+      queryParams.is_active = body.is_active;
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No fields to update' },
+        { status: 400 }
+      );
+    }
+
+    updates.push('updated_at = GETDATE()');
+
     const result = await query<AzDoSyncConfiguration>(
       `UPDATE AzDoSyncConfigurations 
-       SET name = COALESCE(@name, name),
-           project = COALESCE(@project, project),
-           work_item_type = COALESCE(@work_item_type, work_item_type),
-           iteration_path = COALESCE(@iteration_path, iteration_path),
-           area_path = COALESCE(@area_path, area_path),
-           state = COALESCE(@state, state),
-           tags = COALESCE(@tags, tags),
-           focus_period_id = COALESCE(@focus_period_id, focus_period_id),
-           is_active = COALESCE(@is_active, is_active),
-           updated_at = GETDATE()
+       SET ${updates.join(', ')}
        OUTPUT INSERTED.*
        WHERE id = @id`,
-      {
-        id: parseInt(id),
-        name: body.name || null,
-        project: body.project || null,
-        work_item_type: body.work_item_type || null,
-        iteration_path: body.iteration_path || null,
-        area_path: body.area_path || null,
-        state: body.state || null,
-        tags: body.tags || null,
-        focus_period_id: body.focus_period_id || null,
-        is_active: body.is_active !== undefined ? body.is_active : null,
-      }
+      queryParams
     );
 
     if (result.length === 0) {

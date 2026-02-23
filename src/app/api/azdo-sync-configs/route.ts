@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { AzDoSyncConfiguration, CreateAzDoSyncConfigurationInput } from '@/types';
+import { DEFAULT_WORK_ITEM_TYPE } from '@/lib/constants/azureDevOps';
 
 // GET /api/azdo-sync-configs - List all Azure DevOps sync configurations
 export async function GET() {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
       {
         name: body.name,
         project: body.project,
-        work_item_type: body.work_item_type || 'Ergebnis',
+        work_item_type: body.work_item_type || DEFAULT_WORK_ITEM_TYPE,
         iteration_path: body.iteration_path || null,
         area_path: body.area_path || null,
         state: body.state || null,
