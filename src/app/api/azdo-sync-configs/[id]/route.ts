@@ -3,8 +3,16 @@ import { query } from '@/lib/db';
 import { AzDoSyncConfiguration, UpdateAzDoSyncConfigurationInput } from '@/types';
 
 // Helper function to convert empty strings to null
-const toNullIfEmpty = (value: string | number | null | undefined): string | number | null => {
-  if (value === null || value === undefined || value === '' || value === 0) {
+const toNullIfEmpty = (value: string | null | undefined): string | null => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  return value;
+};
+
+// Helper function to convert 0 or null to null for numeric IDs
+const toNullIfZero = (value: number | null | undefined): number | null => {
+  if (value === null || value === undefined || value === 0) {
     return null;
   }
   return value;
@@ -82,8 +90,8 @@ export async function PATCH(
     }
     if (body.focus_period_id !== undefined) {
       updates.push('focus_period_id = @focus_period_id');
-      // Note: 0 is treated as null since focus_period_id should be a positive integer or null
-      queryParams.focus_period_id = toNullIfEmpty(body.focus_period_id);
+      // Note: 0 is treated as null since focus_period_id is an IDENTITY column starting from 1
+      queryParams.focus_period_id = toNullIfZero(body.focus_period_id);
     }
     if (body.is_active !== undefined) {
       updates.push('is_active = @is_active');
