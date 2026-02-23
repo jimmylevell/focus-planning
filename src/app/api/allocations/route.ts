@@ -9,20 +9,31 @@ export async function GET(request: NextRequest) {
     const focusPeriodId = searchParams.get('focus_period_id');
     const teamMemberId = searchParams.get('team_member_id');
     
-    let queryString = 'SELECT * FROM CapacityAllocations WHERE 1=1';
+    let queryString = `
+      SELECT 
+        ca.*,
+        wi.title as work_item_title,
+        wi.state as work_item_state,
+        wi.azdo_id as work_item_azdo_id,
+        wi.effort as work_item_effort,
+        tm.name as member_name
+      FROM CapacityAllocations ca
+      LEFT JOIN WorkItems wi ON ca.work_item_id = wi.id
+      LEFT JOIN TeamMembers tm ON ca.team_member_id = tm.id
+      WHERE 1=1`;
     const params: Record<string, any> = {};
     
     if (focusPeriodId) {
-      queryString += ' AND focus_period_id = @focus_period_id';
+      queryString += ' AND ca.focus_period_id = @focus_period_id';
       params.focus_period_id = focusPeriodId;
     }
     
     if (teamMemberId) {
-      queryString += ' AND team_member_id = @team_member_id';
+      queryString += ' AND ca.team_member_id = @team_member_id';
       params.team_member_id = teamMemberId;
     }
     
-    queryString += ' ORDER BY created_at DESC';
+    queryString += ' ORDER BY ca.created_at DESC';
     
     const allocations = await query<CapacityAllocation>(queryString, Object.keys(params).length > 0 ? params : undefined);
     return NextResponse.json({ success: true, data: allocations });

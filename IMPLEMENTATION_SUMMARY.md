@@ -78,6 +78,13 @@ A comprehensive service (`src/lib/services/azureDevOps.ts`) that provides:
 - **Security**: Input sanitization to prevent injection attacks
 - **Upsert Logic**: Automatically updates existing work items or creates new ones
 - **Field Mapping**: Maps Azure DevOps fields to database schema
+- **Automatic Capacity Allocation**: When work items are synced, the system now automatically:
+  - Extracts the assigned team member from Azure DevOps
+  - Matches the assignee to internal team members by name or email
+  - Creates or updates capacity allocations using the work item effort
+  - Links allocations to the appropriate focus period
+
+This ensures that capacity planning automatically reflects assignments made in Azure DevOps.
 
 ### 5. User Interface
 A modern, responsive web interface built with React and Tailwind CSS:
@@ -101,6 +108,19 @@ A modern, responsive web interface built with React and Tailwind CSS:
 - Action buttons for viewing members and editing
 - Empty state with helpful message
 - Error handling and loading states
+
+#### Capacity Overview Page (`/capacity`)
+- **Summary Cards**: Total capacity, total allocated, and overall utilization across all team members
+- **Team Member Capacity Cards**: Individual cards for each team member showing:
+  - Utilization percentage with color-coded indicators (green < 70%, yellow 70-90%, orange 90-100%, red > 100%)
+  - Available capacity, allocated days, and remaining capacity
+  - Visual progress bar showing utilization
+  - List of assigned work items with details:
+    - Azure DevOps work item ID
+    - Work item title and state
+    - Allocated days and effort
+- **Utilization Legend**: Color-coded legend explaining utilization levels
+- **Real-time Data**: Automatically reflects capacity allocations from Azure DevOps sync
 
 #### Layout & Navigation
 - Consistent header with navigation menu
@@ -172,6 +192,8 @@ Centralized database module (`src/lib/db.ts`) with:
 - API endpoints are ready to receive requests
 - UI is accessible and navigable
 - Database schema can be applied to any MSSQL instance
+- **Capacity overview dashboard** with work item details and utilization tracking
+- **Automatic capacity allocation** from Azure DevOps work item sync
 
 ⚙️ **Requires Configuration**:
 - Database connection (DB_SERVER, DB_USER, DB_PASSWORD)
@@ -186,14 +208,12 @@ The following features were identified in the requirements but are not yet imple
    - Work items listing page
    - Capacity planning view with drag-and-drop
    - Allocations interface
-   - Capacity overview dashboard with heatmaps
 
 2. **Advanced Features**:
    - Authentication and authorization
    - User roles and permissions
    - Drag-and-drop for assignments
-   - Visual capacity heatmaps
-   - Automated capacity calculations
+   - Visual capacity heatmaps (beyond the current progress bars)
    - Validation warnings for over-allocation
    - Member availability overrides UI
    - Scheduled sync functionality
@@ -212,10 +232,9 @@ The following features were identified in the requirements but are not yet imple
    - Add form validation with Zod
 
 2. **Short-term**:
-   - Implement capacity calculation logic
-   - Build capacity overview dashboard
    - Add authentication (NextAuth.js recommended)
    - Create drag-and-drop allocation interface
+   - Enhance capacity overview with additional visualizations
 
 3. **Medium-term**:
    - Add automated Azure DevOps sync scheduling
