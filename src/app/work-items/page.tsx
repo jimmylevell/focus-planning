@@ -119,12 +119,12 @@ export default function WorkItemsPage() {
           body: JSON.stringify({
             name: syncParams.name,
             project: syncParams.project,
-            work_item_type: syncParams.workItemType || undefined,
-            iteration_path: syncParams.iterationPath || undefined,
-            area_path: syncParams.areaPath || undefined,
-            state: syncParams.state || undefined,
-            tags: syncParams.tags || undefined,
-            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : undefined,
+            work_item_type: syncParams.workItemType || null,
+            iteration_path: syncParams.iterationPath || null,
+            area_path: syncParams.areaPath || null,
+            state: syncParams.state || null,
+            tags: syncParams.tags || null,
+            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : null,
           }),
         });
         const updateData = await updateResponse.json();
@@ -141,12 +141,12 @@ export default function WorkItemsPage() {
           body: JSON.stringify({
             name: syncParams.name,
             project: syncParams.project,
-            work_item_type: syncParams.workItemType || undefined,
-            iteration_path: syncParams.iterationPath || undefined,
-            area_path: syncParams.areaPath || undefined,
-            state: syncParams.state || undefined,
-            tags: syncParams.tags || undefined,
-            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : undefined,
+            work_item_type: syncParams.workItemType || null,
+            iteration_path: syncParams.iterationPath || null,
+            area_path: syncParams.areaPath || null,
+            state: syncParams.state || null,
+            tags: syncParams.tags || null,
+            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : null,
           }),
         });
         const configData = await configResponse.json();

@@ -58,23 +58,23 @@ export async function PATCH(
     }
     if (body.iteration_path !== undefined) {
       updates.push('iteration_path = @iteration_path');
-      queryParams.iteration_path = body.iteration_path || null;
+      queryParams.iteration_path = body.iteration_path === null || body.iteration_path === '' ? null : body.iteration_path;
     }
     if (body.area_path !== undefined) {
       updates.push('area_path = @area_path');
-      queryParams.area_path = body.area_path || null;
+      queryParams.area_path = body.area_path === null || body.area_path === '' ? null : body.area_path;
     }
     if (body.state !== undefined) {
       updates.push('state = @state');
-      queryParams.state = body.state || null;
+      queryParams.state = body.state === null || body.state === '' ? null : body.state;
     }
     if (body.tags !== undefined) {
       updates.push('tags = @tags');
-      queryParams.tags = body.tags || null;
+      queryParams.tags = body.tags === null || body.tags === '' ? null : body.tags;
     }
     if (body.focus_period_id !== undefined) {
       updates.push('focus_period_id = @focus_period_id');
-      queryParams.focus_period_id = body.focus_period_id || null;
+      queryParams.focus_period_id = body.focus_period_id === null || body.focus_period_id === 0 ? null : body.focus_period_id;
     }
     if (body.is_active !== undefined) {
       updates.push('is_active = @is_active');
