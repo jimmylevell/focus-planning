@@ -201,13 +201,15 @@ export default function CapacityPage() {
                 </div>
 
                 {/* Work Items List */}
-                {allocations.filter(a => a.team_member_id === capacity.member.id).length > 0 && (
-                  <div className="mt-3 pt-3 border-t">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Assigned Work Items</h4>
-                    <div className="space-y-2">
-                      {allocations
-                        .filter(a => a.team_member_id === capacity.member.id)
-                        .map((allocation) => (
+                {(() => {
+                  const memberAllocations = allocations.filter(a => a.team_member_id === capacity.member.id);
+                  if (memberAllocations.length === 0) return null;
+                  
+                  return (
+                    <div className="mt-3 pt-3 border-t">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Assigned Work Items</h4>
+                      <div className="space-y-2">
+                        {memberAllocations.map((allocation) => (
                           <div key={allocation.id} className="flex items-start justify-between text-sm bg-gray-50 p-2 rounded">
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -228,7 +230,7 @@ export default function CapacityPage() {
                               <div className="font-semibold text-gray-900">
                                 {allocation.allocated_days.toFixed(1)} days
                               </div>
-                              {allocation.work_item_effort && allocation.work_item_effort !== allocation.allocated_days && (
+                              {allocation.work_item_effort && Math.abs(allocation.work_item_effort - allocation.allocated_days) > 0.01 && (
                                 <div className="text-xs text-gray-500">
                                   (effort: {allocation.work_item_effort})
                                 </div>
@@ -236,9 +238,10 @@ export default function CapacityPage() {
                             </div>
                           </div>
                         ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             ))}
           </div>

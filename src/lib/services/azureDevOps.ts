@@ -202,7 +202,8 @@ export class AzureDevOpsService {
         matchedMemberId = exactMatch.id;
       } else {
         // Try partial name match (e.g., "John Doe" matches "Doe, John")
-        const nameParts = owner.toLowerCase().split(/[\s,]+/).filter(p => p.length > 0);
+        // Filter out short name parts (< 2 chars) to avoid false positives
+        const nameParts = owner.toLowerCase().split(/[\s,]+/).filter(p => p.length > 1);
         const partialMatch = teamMembers.find(m => {
           const memberNameLower = m.name.toLowerCase();
           return nameParts.every(part => memberNameLower.includes(part));
