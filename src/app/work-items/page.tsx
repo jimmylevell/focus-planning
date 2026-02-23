@@ -99,6 +99,8 @@ export default function WorkItemsPage() {
         if (data.data.length > 0 && !selectedConfig) {
           setSelectedConfig(data.data[0].id);
         }
+      } else {
+        console.error('Failed to fetch sync configurations:', data.error);
       }
     } catch (err) {
       console.error('Failed to fetch sync configurations:', err);

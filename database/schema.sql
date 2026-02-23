@@ -118,6 +118,8 @@ END
 GO
 
 -- Azure DevOps Sync Configurations table
+-- Stores sync configurations for Azure DevOps work items
+-- Note: work_item_type defaults to 'Ergebnis', which matches DEFAULT_WORK_ITEM_TYPE in src/lib/constants/azureDevOps.ts
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AzDoSyncConfigurations')
 BEGIN
     CREATE TABLE AzDoSyncConfigurations (

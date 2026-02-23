@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { AzDoSyncConfiguration, UpdateAzDoSyncConfigurationInput } from '@/types';
 
+// Helper function to convert empty strings to null
+const toNullIfEmpty = (value: string | number | null | undefined): string | number | null => {
+  if (value === null || value === undefined || value === '' || value === 0) {
+    return null;
+  }
+  return value;
+};
+
 // GET /api/azdo-sync-configs/[id] - Get a specific sync configuration
 export async function GET(
   request: NextRequest,
@@ -58,23 +66,24 @@ export async function PATCH(
     }
     if (body.iteration_path !== undefined) {
       updates.push('iteration_path = @iteration_path');
-      queryParams.iteration_path = body.iteration_path === null || body.iteration_path === '' ? null : body.iteration_path;
+      queryParams.iteration_path = toNullIfEmpty(body.iteration_path);
     }
     if (body.area_path !== undefined) {
       updates.push('area_path = @area_path');
-      queryParams.area_path = body.area_path === null || body.area_path === '' ? null : body.area_path;
+      queryParams.area_path = toNullIfEmpty(body.area_path);
     }
     if (body.state !== undefined) {
       updates.push('state = @state');
-      queryParams.state = body.state === null || body.state === '' ? null : body.state;
+      queryParams.state = toNullIfEmpty(body.state);
     }
     if (body.tags !== undefined) {
       updates.push('tags = @tags');
-      queryParams.tags = body.tags === null || body.tags === '' ? null : body.tags;
+      queryParams.tags = toNullIfEmpty(body.tags);
     }
     if (body.focus_period_id !== undefined) {
       updates.push('focus_period_id = @focus_period_id');
-      queryParams.focus_period_id = body.focus_period_id === null || body.focus_period_id === 0 ? null : body.focus_period_id;
+      // Note: 0 is treated as null since focus_period_id should be a positive integer or null
+      queryParams.focus_period_id = toNullIfEmpty(body.focus_period_id);
     }
     if (body.is_active !== undefined) {
       updates.push('is_active = @is_active');
