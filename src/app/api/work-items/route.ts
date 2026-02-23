@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { WorkItem } from '@/types';
+import { WorkItem, AzDoSyncConfiguration } from '@/types';
 
 // GET /api/work-items - List all work items
 export async function GET(request: NextRequest) {
@@ -34,26 +34,56 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    if (!body.project) {
-      return NextResponse.json(
-        { success: false, error: 'Project is required' },
-        { status: 400 }
+    // Support syncing from a saved configuration ID
+    let syncParams;
+    if (body.syncConfigId) {
+      const configs = await query<AzDoSyncConfiguration>(
+        'SELECT * FROM AzDoSyncConfigurations WHERE id = @id AND is_active = 1',
+        { id: body.syncConfigId }
       );
+      
+      if (configs.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Sync configuration not found' },
+          { status: 404 }
+        );
+      }
+      
+      const config = configs[0];
+      syncParams = {
+        project: config.project,
+        workItemType: config.work_item_type,
+        iterationPath: config.iteration_path,
+        areaPath: config.area_path,
+        state: config.state,
+        tags: config.tags,
+        focusPeriodId: config.focus_period_id,
+      };
+    } else {
+      // Use provided parameters directly
+      if (!body.project) {
+        return NextResponse.json(
+          { success: false, error: 'Project is required' },
+          { status: 400 }
+        );
+      }
+      
+      syncParams = {
+        project: body.project,
+        workItemType: body.workItemType,
+        iterationPath: body.iterationPath,
+        areaPath: body.areaPath,
+        state: body.state,
+        tags: body.tags,
+        focusPeriodId: body.focusPeriodId,
+      };
     }
 
     // Import the Azure DevOps service dynamically to avoid issues
     const { getAzureDevOpsService } = await import('@/lib/services/azureDevOps');
     const azDoService = getAzureDevOpsService();
     
-    const syncedItems = await azDoService.syncWorkItems({
-      project: body.project,
-      workItemType: body.workItemType,
-      iterationPath: body.iterationPath,
-      areaPath: body.areaPath,
-      state: body.state,
-      tags: body.tags,
-      focusPeriodId: body.focusPeriodId,
-    });
+    const syncedItems = await azDoService.syncWorkItems(syncParams);
 
     return NextResponse.json({ 
       success: true, 
