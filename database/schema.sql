@@ -117,6 +117,29 @@ BEGIN
 END
 GO
 
+-- Azure DevOps Sync Configurations table
+-- Stores sync configurations for Azure DevOps work items
+-- Note: work_item_type defaults to 'Ergebnis', which matches DEFAULT_WORK_ITEM_TYPE in src/lib/constants/azureDevOps.ts
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AzDoSyncConfigurations')
+BEGIN
+    CREATE TABLE AzDoSyncConfigurations (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        name NVARCHAR(200) NOT NULL,
+        project NVARCHAR(200) NOT NULL,
+        work_item_type NVARCHAR(100) DEFAULT 'Ergebnis',
+        iteration_path NVARCHAR(500),
+        area_path NVARCHAR(500),
+        state NVARCHAR(100),
+        tags NVARCHAR(200),
+        focus_period_id INT,
+        is_active BIT DEFAULT 1,
+        created_at DATETIME2 DEFAULT GETDATE(),
+        updated_at DATETIME2 DEFAULT GETDATE(),
+        FOREIGN KEY (focus_period_id) REFERENCES FocusPeriods(id)
+    );
+END
+GO
+
 -- Create indexes for better performance
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_team_members_team_id' AND object_id = OBJECT_ID('TeamMembers'))
     CREATE INDEX idx_team_members_team_id ON TeamMembers(team_id);
@@ -138,4 +161,7 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_capacity_allocations_
 
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_member_availability_member' AND object_id = OBJECT_ID('MemberAvailability'))
     CREATE INDEX idx_member_availability_member ON MemberAvailability(team_member_id);
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_azdo_sync_configs_focus' AND object_id = OBJECT_ID('AzDoSyncConfigurations'))
+    CREATE INDEX idx_azdo_sync_configs_focus ON AzDoSyncConfigurations(focus_period_id);
 GO

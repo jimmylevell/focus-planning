@@ -216,3 +216,42 @@ export interface FocusCapacitySummary {
   variance_percentage: number;
   member_summaries: MemberCapacitySummary[];
 }
+
+// Azure DevOps Sync Configuration types
+export interface AzDoSyncConfiguration {
+  id: number;
+  name: string;
+  project: string;
+  work_item_type?: string;
+  iteration_path?: string;
+  area_path?: string;
+  state?: string;
+  tags?: string;
+  focus_period_id?: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateAzDoSyncConfigurationInput {
+  name: string;
+  project: string;
+  work_item_type?: string;
+  iteration_path?: string;
+  area_path?: string;
+  state?: string;
+  tags?: string;
+  focus_period_id?: number;
+}
+
+export interface UpdateAzDoSyncConfigurationInput {
+  name?: string;
+  project?: string;
+  work_item_type?: string;
+  iteration_path?: string;
+  area_path?: string;
+  state?: string;
+  tags?: string;
+  focus_period_id?: number;
+  is_active?: boolean;
+}
