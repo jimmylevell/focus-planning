@@ -45,11 +45,11 @@ export async function PATCH(
        SET name = COALESCE(@name, name),
            project = COALESCE(@project, project),
            work_item_type = COALESCE(@work_item_type, work_item_type),
-           iteration_path = @iteration_path,
-           area_path = @area_path,
-           state = @state,
-           tags = @tags,
-           focus_period_id = @focus_period_id,
+           iteration_path = COALESCE(@iteration_path, iteration_path),
+           area_path = COALESCE(@area_path, area_path),
+           state = COALESCE(@state, state),
+           tags = COALESCE(@tags, tags),
+           focus_period_id = COALESCE(@focus_period_id, focus_period_id),
            is_active = COALESCE(@is_active, is_active),
            updated_at = GETDATE()
        OUTPUT INSERTED.*
@@ -59,11 +59,11 @@ export async function PATCH(
         name: body.name || null,
         project: body.project || null,
         work_item_type: body.work_item_type || null,
-        iteration_path: body.iteration_path !== undefined ? body.iteration_path : null,
-        area_path: body.area_path !== undefined ? body.area_path : null,
-        state: body.state !== undefined ? body.state : null,
-        tags: body.tags !== undefined ? body.tags : null,
-        focus_period_id: body.focus_period_id !== undefined ? body.focus_period_id : null,
+        iteration_path: body.iteration_path || null,
+        area_path: body.area_path || null,
+        state: body.state || null,
+        tags: body.tags || null,
+        focus_period_id: body.focus_period_id || null,
         is_active: body.is_active !== undefined ? body.is_active : null,
       }
     );
