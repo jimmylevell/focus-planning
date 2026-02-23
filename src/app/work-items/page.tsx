@@ -126,7 +126,7 @@ export default function WorkItemsPage() {
             area_path: syncParams.areaPath || null,
             state: syncParams.state || null,
             tags: syncParams.tags || null,
-            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : null,
+            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId, 10) : null,
           }),
         });
         const updateData = await updateResponse.json();
@@ -148,7 +148,7 @@ export default function WorkItemsPage() {
             area_path: syncParams.areaPath || null,
             state: syncParams.state || null,
             tags: syncParams.tags || null,
-            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : null,
+            focus_period_id: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId, 10) : null,
           }),
         });
         const configData = await configResponse.json();
@@ -171,7 +171,7 @@ export default function WorkItemsPage() {
           areaPath: syncParams.areaPath || undefined,
           state: syncParams.state || undefined,
           tags: syncParams.tags || undefined,
-          focusPeriodId: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId) : undefined,
+          focusPeriodId: syncParams.focusPeriodId ? parseInt(syncParams.focusPeriodId, 10) : undefined,
         }),
       });
       const data = await response.json();
