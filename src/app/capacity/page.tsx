@@ -43,10 +43,22 @@ export default function CapacityPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch members and allocations
+      // Fetch active focus period first
+      const focusPeriodsRes = await fetch('/api/focus-periods');
+      const focusPeriodsData = await focusPeriodsRes.json();
+      
+      if (!focusPeriodsData.success || focusPeriodsData.data.length === 0) {
+        setError('No active focus period found. Please create and activate a focus period first.');
+        setLoading(false);
+        return;
+      }
+
+      const activeFocusPeriod = focusPeriodsData.data[0];
+      
+      // Fetch members and allocations for the active focus period
       const [membersRes, allocationsRes] = await Promise.all([
         fetch('/api/members'),
-        fetch('/api/allocations'),
+        fetch(`/api/allocations?focus_period_id=${activeFocusPeriod.id}`),
       ]);
 
       const membersData = await membersRes.json();
