@@ -22,7 +22,7 @@ export class AzureDevOpsService {
 
   /**
    * Sync work items from Azure DevOps based on filters
-   * Note: Azure DevOps API uses WIQL (Work Item Query Language) which is not susceptible 
+   * Note: Azure DevOps API uses WIQL (Work Item Query Language) which is not susceptible
    * to traditional SQL injection as it's parsed and validated by the Azure DevOps service.
    * However, we still sanitize input parameters to prevent any potential issues.
    */
@@ -37,10 +37,10 @@ export class AzureDevOpsService {
   }): Promise<WorkItem[]> {
     try {
       const witApi = await this.witApi;
-      
+
       // Sanitize inputs by removing potentially harmful characters
       const sanitizeString = (str: string) => str.replace(/['"]/g, '');
-      
+
       // Build WIQL query with sanitized inputs
       const workItemType = sanitizeString(params.workItemType || 'Ergebnis');
       let wiqlQuery = `SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.Tags], [Microsoft.VSTS.Scheduling.Effort]
@@ -91,15 +91,27 @@ export class AzureDevOpsService {
 
       // Save to database
       const syncedItems: WorkItem[] = [];
-      
+
       for (const wi of workItems) {
         if (!wi.id || !wi.fields) continue;
+
+        // Extract owner email from AssignedTo field
+        // Azure DevOps returns an identity object with displayName and uniqueName (email)
+        const assignedTo = wi.fields['System.AssignedTo'];
+        let ownerValue: string | undefined = undefined;
+
+        if (assignedTo) {
+          // Store only the email (uniqueName) for consistent matching
+          ownerValue = assignedTo.uniqueName || assignedTo.displayName;
+
+          console.log(`Work item ${wi.id} assigned to: ${ownerValue}`);
+        }
 
         const workItemData: CreateWorkItemInput = {
           azdo_id: wi.id,
           title: wi.fields['System.Title'] || '',
           state: wi.fields['System.State'],
-          owner: wi.fields['System.AssignedTo']?.displayName,
+          owner: ownerValue,
           tags: wi.fields['System.Tags'],
           effort: wi.fields['Microsoft.VSTS.Scheduling.Effort'],
           focus_period_id: params.focusPeriodId,
@@ -196,31 +208,51 @@ export class AzureDevOpsService {
       const owner = workItem.owner!;
       let matchedMemberId: number | null = null;
 
-      // Try exact name match first
-      const exactMatch = teamMembers.find(m => m.name.toLowerCase() === owner.toLowerCase());
-      if (exactMatch) {
-        matchedMemberId = exactMatch.id;
-      } else {
-        // Try partial name match (e.g., "John Doe" matches "Doe, John")
-        // Filter out short name parts (< 2 chars) to avoid false positives
-        const nameParts = owner.toLowerCase().split(/[\s,]+/).filter(p => p.length > 1);
-        const partialMatch = teamMembers.find(m => {
-          const memberNameLower = m.name.toLowerCase();
-          return nameParts.every(part => memberNameLower.includes(part));
-        });
-        if (partialMatch) {
-          matchedMemberId = partialMatch.id;
+      console.log(`Attempting to match owner "${owner}" to team members for work item ${workItem.azdo_id}`);
+
+      // Since we now store emails, try email match first
+      if (owner.includes('@')) {
+        const emailMatch = teamMembers.find(m => m.email && m.email.toLowerCase() === owner.toLowerCase());
+        if (emailMatch) {
+          matchedMemberId = emailMatch.id;
+          console.log(`Found email match: ${emailMatch.email} (ID: ${emailMatch.id})`);
+        }
+      }
+
+      // Fallback to exact name match
+      if (!matchedMemberId) {
+        const exactMatch = teamMembers.find(m => m.name && m.name.toLowerCase() === owner.toLowerCase());
+        if (exactMatch) {
+          matchedMemberId = exactMatch.id;
+          console.log(`Found exact name match: ${exactMatch.name} (ID: ${exactMatch.id})`);
+        }
+      }
+
+      // Last resort: partial name match
+      if (!matchedMemberId) {
+        const nameParts = owner.toLowerCase().split(/[\s,<>()]+/).filter(p => p.length > 2 && !p.includes('@'));
+        if (nameParts.length > 0) {
+          const partialMatch = teamMembers.find(m => {
+            if (!m.name) return false;
+            const memberNameLower = m.name.toLowerCase();
+            return nameParts.some(part => memberNameLower.includes(part));
+          });
+          if (partialMatch) {
+            matchedMemberId = partialMatch.id;
+            console.log(`Found partial name match: ${partialMatch.name} (ID: ${partialMatch.id})`);
+          }
         }
       }
 
       if (!matchedMemberId) {
         console.warn(`Could not match Azure DevOps owner "${owner}" to any team member for work item ${workItem.azdo_id}`);
+        console.warn(`Available team members: ${teamMembers.map(m => `${m.name} (${m.email || 'no email'})`).join(', ')}`);
         return;
       }
 
       // Check if allocation already exists
       const existingAllocation = await query(
-        `SELECT id, allocated_days FROM CapacityAllocations 
+        `SELECT id, allocated_days FROM CapacityAllocations
          WHERE work_item_id = @work_item_id AND team_member_id = @team_member_id AND focus_period_id = @focus_period_id`,
         {
           work_item_id: workItem.id,
@@ -231,8 +263,14 @@ export class AzureDevOpsService {
 
       const allocatedDays = workItem.effort || 0;
 
+      if (allocatedDays === 0) {
+        console.warn(`Work item ${workItem.azdo_id} has no effort value, skipping allocation sync`);
+        return;
+      }
+
       if (existingAllocation.length > 0) {
         // Update existing allocation
+        console.log(`Updating allocation for work item ${workItem.azdo_id}: ${allocatedDays} days (was ${existingAllocation[0].allocated_days})`);
         await query(
           `UPDATE CapacityAllocations
            SET allocated_days = @allocated_days,
@@ -245,6 +283,7 @@ export class AzureDevOpsService {
         );
       } else {
         // Create new allocation
+        console.log(`Creating allocation for work item ${workItem.azdo_id}: ${allocatedDays} days for member ${matchedMemberId}`);
         await query(
           `INSERT INTO CapacityAllocations (team_member_id, work_item_id, focus_period_id, allocated_days)
            VALUES (@team_member_id, @work_item_id, @focus_period_id, @allocated_days)`,
@@ -273,6 +312,44 @@ export class AzureDevOpsService {
     } catch (error) {
       console.error('Error fetching work item from Azure DevOps:', error);
       return null;
+    }
+  }
+
+  /**
+   * Manually sync allocations for all existing work items in a focus period
+   * Useful for re-processing work items after team member setup
+   */
+  async syncAllocationsForFocusPeriod(focusPeriodId: number): Promise<{ synced: number; skipped: number; failed: number }> {
+    try {
+      const workItems = await query<WorkItem>(
+        'SELECT * FROM WorkItems WHERE focus_period_id = @focus_period_id',
+        { focus_period_id: focusPeriodId }
+      );
+
+      let synced = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const workItem of workItems) {
+        if (!workItem.owner || !workItem.effort) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          await this.syncCapacityAllocation(workItem, focusPeriodId);
+          synced++;
+        } catch (error) {
+          console.error(`Failed to sync allocation for work item ${workItem.azdo_id}:`, error);
+          failed++;
+        }
+      }
+
+      console.log(`Allocation sync complete: ${synced} synced, ${skipped} skipped, ${failed} failed`);
+      return { synced, skipped, failed };
+    } catch (error) {
+      console.error('Error syncing allocations for focus period:', error);
+      throw error;
     }
   }
 }

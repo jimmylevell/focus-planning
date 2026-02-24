@@ -33,7 +33,12 @@ Execute the schema script located at `database/schema.sql`:
 
 **Using sqlcmd:**
 ```bash
-sqlcmd -S localhost -U sa -P YourPassword -d focus_planning -i database/schema.sql
+# create the database first if you haven't already
+sqlcmd -S localhost -U sa -P YourPassword123! -Q "CREATE DATABASE focus_planning;"
+```
+
+```bash
+sqlcmd -S localhost -U sa -P YourPassword123! -d focus_planning -i database/schema.sql
 ```
 
 **Using SQL Server Management Studio:**

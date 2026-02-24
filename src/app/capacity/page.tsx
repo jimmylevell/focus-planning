@@ -35,7 +35,9 @@ export default function CapacityPage() {
   const [allocations, setAllocations] = useState<CapacityAllocation[]>([]);
   const [capacitySummary, setCapacitySummary] = useState<MemberCapacity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeFocusPeriodId, setActiveFocusPeriodId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -47,7 +49,7 @@ export default function CapacityPage() {
       // API returns only active focus periods (WHERE is_active = 1) sorted by start_date DESC
       const focusPeriodsRes = await fetch('/api/focus-periods');
       const focusPeriodsData = await focusPeriodsRes.json();
-      
+
       if (!focusPeriodsData.success || !focusPeriodsData.data || focusPeriodsData.data.length === 0) {
         setError('No active focus period found. Please create and activate a focus period first.');
         setLoading(false);
@@ -56,7 +58,8 @@ export default function CapacityPage() {
 
       // Use the first active focus period (most recent by start_date)
       const activeFocusPeriod = focusPeriodsData.data[0];
-      
+      setActiveFocusPeriodId(activeFocusPeriod.id);
+
       // Fetch members and allocations for the active focus period
       const [membersRes, allocationsRes] = await Promise.all([
         fetch('/api/members'),
@@ -69,7 +72,7 @@ export default function CapacityPage() {
       if (membersData.success && allocationsData.success) {
         setMembers(membersData.data);
         setAllocations(allocationsData.data);
-        
+
         // Calculate capacity summary
         const summary = calculateCapacitySummary(membersData.data, allocationsData.data);
         setCapacitySummary(summary);
@@ -83,6 +86,41 @@ export default function CapacityPage() {
     }
   };
 
+  const handleResyncAllocations = async () => {
+    if (!activeFocusPeriodId) {
+      setError('No active focus period found');
+      return;
+    }
+
+    setSyncing(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/work-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          syncAllocationsOnly: true,
+          focusPeriodId: activeFocusPeriodId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh the data
+        await fetchData();
+        setError(null);
+      } else {
+        setError(data.error || 'Failed to sync allocations');
+      }
+    } catch (err) {
+      setError('Failed to sync allocations');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const calculateCapacitySummary = (
     members: TeamMember[],
     allocations: CapacityAllocation[]
@@ -91,12 +129,12 @@ export default function CapacityPage() {
       const memberAllocations = allocations.filter(
         (a) => a.team_member_id === member.id
       );
-      
+
       const total_allocated = memberAllocations.reduce(
         (sum, a) => sum + a.allocated_days,
         0
       );
-      
+
       const available_capacity = member.default_capacity_days || 0;
       const utilization = available_capacity > 0
         ? (total_allocated / available_capacity) * 100
@@ -139,7 +177,20 @@ export default function CapacityPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Capacity Overview</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Capacity Overview</h1>
+        <button
+          onClick={handleResyncAllocations}
+          disabled={syncing || !activeFocusPeriodId}
+          className="btn-secondary"
+          title="Re-sync capacity allocations from work items"
+        >
+          <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {syncing ? 'Syncing...' : 'Sync Allocations'}
+        </button>
+      </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -168,7 +219,7 @@ export default function CapacityPage() {
       {/* Team Member Capacity */}
       <div className="card">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Team Member Capacity</h2>
-        
+
         {capacitySummary.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500">No team members found. Add team members to see capacity overview.</p>
@@ -188,7 +239,7 @@ export default function CapacityPage() {
                     {capacity.utilization.toFixed(1)}%
                   </span>
                 </div>
-                
+
                 <div className="grid grid-cols-3 gap-4 mb-3">
                   <div>
                     <p className="text-xs text-gray-500">Available</p>
@@ -218,7 +269,7 @@ export default function CapacityPage() {
                 {(() => {
                   const memberAllocations = allocations.filter(a => a.team_member_id === capacity.member.id);
                   if (memberAllocations.length === 0) return null;
-                  
+
                   return (
                     <div className="mt-3 pt-3 border-t">
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Assigned Work Items</h4>

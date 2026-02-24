@@ -111,7 +111,7 @@ export default function WorkItemsPage() {
     e.preventDefault();
     setSyncing(true);
     setError(null);
-    
+
     try {
       // If editing an existing config, update it
       if (editingConfig) {
@@ -193,10 +193,10 @@ export default function WorkItemsPage() {
 
   const handleRefreshSync = async () => {
     if (!selectedConfig) return;
-    
+
     setSyncing(true);
     setError(null);
-    
+
     try {
       const response = await fetch('/api/work-items', {
         method: 'POST',
@@ -233,6 +233,21 @@ export default function WorkItemsPage() {
     setShowSyncModal(true);
   };
 
+  const openCopyModal = (config: SyncConfiguration) => {
+    setEditingConfig(null); // Set to null so it creates a new config
+    setSyncParams({
+      name: `Copy of ${config.name}`,
+      project: config.project,
+      workItemType: config.work_item_type || DEFAULT_WORK_ITEM_TYPE,
+      iterationPath: config.iteration_path || '',
+      areaPath: config.area_path || '',
+      state: config.state || '',
+      tags: config.tags || '',
+      focusPeriodId: config.focus_period_id?.toString() || '',
+    });
+    setShowSyncModal(true);
+  };
+
   const openCreateModal = () => {
     setEditingConfig(null);
     setSyncParams({
@@ -250,7 +265,7 @@ export default function WorkItemsPage() {
 
   const handleDeleteConfig = async (configId: number) => {
     if (!confirm('Are you sure you want to delete this sync configuration?')) return;
-    
+
     try {
       const response = await fetch(`/api/azdo-sync-configs/${configId}`, {
         method: 'DELETE',
@@ -327,6 +342,18 @@ export default function WorkItemsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   {syncing ? 'Syncing...' : 'Sync Now'}
+                </button>
+                <button
+                  onClick={() => {
+                    const config = syncConfigurations.find(c => c.id === selectedConfig);
+                    if (config) openCopyModal(config);
+                  }}
+                  className="text-purple-600 hover:text-purple-800"
+                  title="Copy configuration"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
                 </button>
                 <button
                   onClick={() => {
