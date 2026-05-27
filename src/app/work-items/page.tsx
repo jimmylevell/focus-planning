@@ -38,6 +38,7 @@ export default function WorkItemsPage() {
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
   const [focusPeriods, setFocusPeriods] = useState<FocusPeriod[]>([]);
   const [syncConfigurations, setSyncConfigurations] = useState<SyncConfiguration[]>([]);
+  const [azdoProject, setAzdoProject] = useState<string | null>(null);
   const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -59,7 +60,20 @@ export default function WorkItemsPage() {
     fetchWorkItems();
     fetchFocusPeriods();
     fetchSyncConfigurations();
+    fetchAzdoProject();
   }, []);
+
+  const fetchAzdoProject = async () => {
+    try {
+      const response = await fetch('/api/azdo-projects');
+      const data = await response.json();
+      if (data.success) {
+        setAzdoProject(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Azure DevOps project:', err);
+    }
+  };
 
   const fetchWorkItems = async () => {
     try {
@@ -112,6 +126,8 @@ export default function WorkItemsPage() {
     setSyncing(true);
     setError(null);
 
+    const resolvedProject = azdoProject ?? syncParams.project;
+
     try {
       // If editing an existing config, update it
       if (editingConfig) {
@@ -120,7 +136,7 @@ export default function WorkItemsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: syncParams.name,
-            project: syncParams.project,
+            project: resolvedProject,
             work_item_type: syncParams.workItemType || null,
             iteration_path: syncParams.iterationPath || null,
             area_path: syncParams.areaPath || null,
@@ -142,7 +158,7 @@ export default function WorkItemsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: syncParams.name,
-            project: syncParams.project,
+            project: resolvedProject,
             work_item_type: syncParams.workItemType || null,
             iteration_path: syncParams.iterationPath || null,
             area_path: syncParams.areaPath || null,
@@ -165,7 +181,7 @@ export default function WorkItemsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          project: syncParams.project,
+          project: resolvedProject,
           workItemType: syncParams.workItemType || undefined,
           iterationPath: syncParams.iterationPath || undefined,
           areaPath: syncParams.areaPath || undefined,
@@ -496,16 +512,18 @@ export default function WorkItemsPage() {
                 <label className="label">Project Name *</label>
                 <input
                   type="text"
-                  value={syncParams.project}
+                  value={azdoProject ?? syncParams.project}
                   onChange={(e) => setSyncParams({ ...syncParams, project: e.target.value })}
                   className="input w-full"
                   placeholder="e.g., MyProject"
                   required
-                  disabled={syncing}
+                  disabled={syncing || !!azdoProject}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  The Azure DevOps project name to sync from
-                </p>
+                {azdoProject && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Configured via <code>AZDO_PROJECT</code> environment variable
+                  </p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="label">Work Item Type</label>
